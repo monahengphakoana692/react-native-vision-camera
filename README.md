@@ -93,3 +93,24 @@ If you're integrating VisionCamera in a production app, consider [funding this p
 * 💬 [**Join the Margelo Community Discord**](https://margelo.com/discord) for chatting about VisionCamera
 * 💖 [**Sponsor me on GitHub**](https://github.com/sponsors/mrousavy) to support my work
 * 🍪 [**Buy me a Ko-Fi**](https://ko-fi.com/mrousavy) to support my work
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+
+THIS IS A GUIDE OF HOW YOU CAN HAVE THE LIBRAY IN YOUR LOCAL MACHINE. SO THE AIM IS TO HAVE THE LIBRARY IN YOUR LAPTOP AND THEN NAVIGATE TO THE PROJECT S FOLDER NAME streamy6 AND THEN OPEN THAT IN VS CODE THEN RUN THE PROJECT.... GOOD LUCK BUDDY!
+
+---------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
+
+1. you need to make sure that you have access to the project
+2. open you powershell run as admin
+3. this assumes you have git installed in your computer
+4. run this git clone https://github.com/monahengphakoana692/react-native-vision-camera.git
+5. cd react-native-vision-camera
+6. npm install
+7. cd streamy6
+8. code . , to open vs code, then open terminal in vs code 
+9. npm install
+10. npx react-native start
+11. leave the terminal and open another one 
+12. npx react-native run-android
+13. 
