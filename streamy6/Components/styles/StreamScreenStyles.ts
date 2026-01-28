@@ -1,0 +1,275 @@
+// screens/StreamScreen/styles/StreamScreenStyles.ts
+import { StyleSheet, Platform, Dimensions } from 'react-native';
+
+const { width, height } = Dimensions.get('window');
+
+export const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000000',
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+  },
+  backButton: {
+    padding: 5,
+    marginRight: 15,
+  },
+  titleContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    flex: 1,
+  },
+  liveBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 10,
+  },
+  liveDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
+    marginRight: 4,
+  },
+  liveText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  viewerCountBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 15,
+  },
+  viewerCountText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 4,
+  },
+  content: {
+    flex: 1,
+  },
+  videoContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    position: 'relative',
+  },
+  videoPreview: {
+    flex: 1,
+    width: '100%',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  loadingText: {
+    color: '#FFFFFF',
+    marginTop: 15,
+    fontSize: 16,
+  },
+  noVideoContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+  },
+  noVideoText: {
+    color: '#8E8E93',
+    marginTop: 15,
+    fontSize: 16,
+  },
+  rightSidebar: {
+    position: 'absolute',
+    right: 15,
+    top: '30%',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    borderRadius: 25,
+    paddingVertical: 10,
+    paddingHorizontal: 5,
+  },
+  sidebarButton: {
+    alignItems: 'center',
+    marginVertical: 10,
+    width: 60,
+  },
+  sidebarButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  commentBadge: {
+    position: 'relative',
+  },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -5,
+    backgroundColor: '#FF3B30',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  streamStatusOverlay: {
+    position: 'absolute',
+    top: 15,
+    left: 15,
+    right: 15,
+  },
+  statusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  statusItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 15,
+  },
+  statusText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    marginLeft: 5,
+    fontWeight: '500',
+  },
+  bottomControls: {
+    position: 'absolute',
+    bottom: 30,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  startStreamButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 30,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  startIcon: {
+    marginRight: 10,
+  },
+  startStreamText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  stopStreamButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 25,
+    paddingVertical: 12,
+    borderRadius: 25,
+  },
+  stopIcon: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 15,
+    padding: 8,
+    marginRight: 10,
+  },
+  stopStreamText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  disabledButton: {
+    backgroundColor: '#3A3A3C',
+    opacity: 0.7,
+  },
+  streamInfo: {
+    backgroundColor: 'rgba(28, 28, 30, 0.9)',
+    padding: 15,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: 10,
+  },
+  infoItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  infoText: {
+    color: '#8E8E93',
+    fontSize: 14,
+    marginLeft: 8,
+  },
+  streamUrl: {
+    color: '#8E8E93',
+    fontSize: 12,
+    textAlign: 'center',
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    maxHeight: '80%',
+  },
+  commentsModal: {
+    maxHeight: '90%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalBody: {
+    padding: 20,
+  },
+});
