@@ -1,48 +1,43 @@
 package com.streamy6
 
 import android.app.Application
-import android.util.Log
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
-import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.ReactNativeHost
 import com.facebook.react.ReactPackage
+import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
-import com.mrousavy.camera.frameprocessors.FrameProcessorPluginRegistry
-import com.mrousavy.camera.frameprocessors.VisionCameraProxy
+import com.facebook.react.soloader.OpenSourceMergedSoMapping
+import com.facebook.soloader.SoLoader
+import com.streamy6.ReactStreamy6Package
 
 class MainApplication : Application(), ReactApplication {
-    private val TAG = "MainApplication"
 
-    override val reactNativeHost: ReactNativeHost =
-        object : DefaultReactNativeHost(this) {
-            override fun getPackages(): List<ReactPackage> =
-                PackageList(this).packages.apply {
-                    // Packages that cannot be autolinked yet can be added manually here
-                }
+  override val reactNativeHost: ReactNativeHost =
+      object : DefaultReactNativeHost(this) {
+        override fun getPackages(): List<ReactPackage> =
+            PackageList(this).packages.apply {
+              add(ReactStreamy6Package())
+            }
 
-            override fun getJSMainModuleName(): String = "index"
-            override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
-            override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
-            override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
-        }
+        override fun getJSMainModuleName(): String = "index"
 
-    override val reactHost: ReactHost
-        get() = getDefaultReactHost(applicationContext, reactNativeHost)
+        override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 
-    override fun onCreate() {
-        super.onCreate()
-        Log.d(TAG, "🚀 MainApplication.onCreate()")
-        loadReactNative(this)
+        override val isNewArchEnabled: Boolean = BuildConfig.IS_NEW_ARCHITECTURE_ENABLED
+        override val isHermesEnabled: Boolean = BuildConfig.IS_HERMES_ENABLED
+      }
 
-        Log.d(TAG, "🔧 Registering frame processor plugin 'frameLogger'")
-        FrameProcessorPluginRegistry.addFrameProcessorPlugin(
-            "frameLogger"
-        ) { _: VisionCameraProxy, _: Map<String, Any>? ->
-            Log.d(TAG, "✅ Creating StreamingFrameProcessor instance")
-            com.streamy6.frameprocessor.StreamingFrameProcessor()
-        }
+  override val reactHost: ReactHost
+    get() = getDefaultReactHost(applicationContext, reactNativeHost)
+
+  override fun onCreate() {
+    super.onCreate()
+    SoLoader.init(this, OpenSourceMergedSoMapping)
+    if (BuildConfig.IS_NEW_ARCHITECTURE_ENABLED) {
+      load()
     }
+  }
 }

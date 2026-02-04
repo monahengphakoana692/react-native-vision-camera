@@ -9,6 +9,19 @@
     "start": "react-native start",
     "test": "jest"
   },
+  "codegenConfig": {
+    "name": "AppSpec",
+    "type": "components",
+    "jsSrcsDir": "specs",
+    "android": {
+      "javaPackageName": "com.streamy6"
+    },
+    "ios": {
+      "componentProvider": {
+        "CustomStreamy6": "RCTStreamy6"
+      }
+    }
+  },
   "dependencies": {
     "@react-native-camera-roll/camera-roll": "^7.10.2",
     "@react-native-community/slider": "^5.1.2",
