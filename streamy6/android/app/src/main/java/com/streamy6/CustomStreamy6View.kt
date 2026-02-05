@@ -1,11 +1,11 @@
 package com.streamy6
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.*
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
+import android.view.Surface
 import androidx.appcompat.app.AppCompatActivity
 import androidx.camera.core.*
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
@@ -19,6 +19,7 @@ import com.facebook.react.bridge.LifecycleEventListener
 import com.facebook.react.uimanager.ThemedReactContext
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facedetector.FaceDetectorResult
+import com.streamy6.encoder.VideoEncoder
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
@@ -30,32 +31,39 @@ class CustomStreamy6View(
     FaceDetectorHelper.DetectorListener,
     LifecycleEventListener {
 
-    // -----------------------
+    // ======================================================
     // STATE
-    // -----------------------
+    // ======================================================
     @Volatile private var detectorReady = false
     private var cameraStarted = false
     private var isEnabled = false
     private var showDetection = false
+    private var streamingStarted = false
 
-    // -----------------------
+    // ======================================================
     // UI
-    // -----------------------
+    // ======================================================
     private val previewView = PreviewView(context)
     private val overlayView = OverlayView(context)
 
-    // -----------------------
+    // ======================================================
     // CAMERA
-    // -----------------------
+    // ======================================================
     private var cameraProvider: ProcessCameraProvider? = null
     private var preview: Preview? = null
     private var imageAnalyzer: ImageAnalysis? = null
 
-    // -----------------------
+    // ======================================================
     // DETECTION
-    // -----------------------
+    // ======================================================
     private lateinit var faceDetectorHelper: FaceDetectorHelper
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+
+    // ======================================================
+    // ENCODER
+    // ======================================================
+    private var videoEncoder: VideoEncoder? = null
+    private var encoderSurface: Surface? = null
 
     init {
         reactContext.addLifecycleEventListener(this)
@@ -63,7 +71,7 @@ class CustomStreamy6View(
         initDetector()
     }
 
-    // ======================================================
+     // ======================================================
     // UI SETUP
     // ======================================================
     private fun setupLayout() {
@@ -93,7 +101,7 @@ class CustomStreamy6View(
         set.applyTo(this)
     }
 
-    private fun installHierarchyFitter(view: ViewGroup) {
+        private fun installHierarchyFitter(view: ViewGroup) {
         view.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
             override fun onChildViewRemoved(parent: View?, child: View?) = Unit
             override fun onChildViewAdded(parent: View?, child: View?) {
@@ -107,7 +115,7 @@ class CustomStreamy6View(
     }
 
     // ======================================================
-    // PUBLIC API (REACT PROPS)
+    // REACT PROPS
     // ======================================================
     fun setStreamEnabled(enabled: Boolean) {
         isEnabled = enabled
@@ -118,6 +126,25 @@ class CustomStreamy6View(
         showDetection = show
         if (!show) overlayView.clear()
         if (cameraStarted) bindCamera()
+    }
+
+    /**
+     * 🔥 CALLED FROM REACT BUTTON
+     */
+    fun startStreaming() 
+    {
+        if (streamingStarted) return
+        if (!cameraStarted) {
+            Log.w("Streamy6", "Cannot start streaming – camera not ready")
+            return
+        }
+
+        streamingStarted = true
+
+        previewView.post {
+            startEncoder()
+        }
+        Log.w("Streamy6", "inside the start stream method------------------------------------")
     }
 
     // ======================================================
@@ -136,7 +163,9 @@ class CustomStreamy6View(
 
     private fun stopCamera() {
         cameraProvider?.unbindAll()
+        stopEncoder()
         cameraStarted = false
+        streamingStarted = false
     }
 
     private fun bindCamera() {
@@ -157,7 +186,6 @@ class CustomStreamy6View(
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
 
         imageAnalyzer = null
-
         if (showDetection && detectorReady) {
             imageAnalyzer = ImageAnalysis.Builder()
                 .setResolutionSelector(resolutionSelector)
@@ -166,9 +194,7 @@ class CustomStreamy6View(
                 .build()
                 .also {
                     it.setAnalyzer(executor) { image ->
-                        if (::faceDetectorHelper.isInitialized) {
-                            faceDetectorHelper.detectLivestreamFrame(image)
-                        } else image.close()
+                        faceDetectorHelper.detectLivestreamFrame(image)
                     }
                 }
         }
@@ -182,7 +208,40 @@ class CustomStreamy6View(
     }
 
     // ======================================================
-    // FACE DETECTOR
+    // ENCODER (SAFE)
+    // ======================================================
+private fun startEncoder() {
+    if (videoEncoder != null) return
+
+    try {
+        videoEncoder = VideoEncoder(
+            width = 1280,
+            height = 720,
+            fps = 30,
+            bitrate = 2_000_000 // Reduced bitrate
+        )
+
+        encoderSurface = videoEncoder!!.start()
+        
+        // Add a small delay to ensure encoder is ready
+        Thread.sleep(100)
+        
+        Log.d("Streamy6", "Encoder started successfully")
+    } catch (e: Exception) {
+        Log.e("Streamy6", "Encoder failed to start", e)
+        stopEncoder()
+        // Re-throw or handle the error appropriately
+    }
+}
+    private fun stopEncoder() {
+        encoderSurface?.release()
+        encoderSurface = null
+        videoEncoder?.stop()
+        videoEncoder = null
+    }
+
+    // ======================================================
+    // DETECTOR
     // ======================================================
     private fun initDetector() {
         executor.execute {
@@ -212,7 +271,7 @@ class CustomStreamy6View(
     }
 
     // ======================================================
-    // REACT LIFECYCLE
+    // LIFECYCLE
     // ======================================================
     override fun onHostResume() {
         if (isEnabled) startCamera()
@@ -241,11 +300,7 @@ class CustomStreamy6View(
             strokeWidth = 6f
         }
 
-        fun setResults(
-            r: FaceDetectorResult?,
-            h: Int,
-            w: Int
-        ) {
+        fun setResults(r: FaceDetectorResult?, h: Int, w: Int) {
             result = r
             if (w > 0 && h > 0) {
                 scale = min(width.toFloat() / w, height.toFloat() / h)
