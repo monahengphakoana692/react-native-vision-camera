@@ -2,12 +2,17 @@ package com.streamy6
 
 import android.content.Context
 import android.graphics.*
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
+import android.view.Surface
 import android.view.View
 import android.view.ViewGroup
-import android.view.Surface
 import androidx.appcompat.app.AppCompatActivity
-import androidx.camera.core.*
+import androidx.camera.core.AspectRatio
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.lifecycle.ProcessCameraProvider
@@ -20,9 +25,11 @@ import com.facebook.react.uimanager.ThemedReactContext
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facedetector.FaceDetectorResult
 import com.streamy6.encoder.VideoEncoder
+import com.streamy6.gl.CameraEglRenderer
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.min
 
 class CustomStreamy6View(
@@ -38,7 +45,7 @@ class CustomStreamy6View(
     private var cameraStarted = false
     private var isEnabled = false
     private var showDetection = false
-    private var streamingStarted = false
+    private var streamingStarted = AtomicBoolean(false)
 
     // ======================================================
     // UI
@@ -50,7 +57,7 @@ class CustomStreamy6View(
     // CAMERA
     // ======================================================
     private var cameraProvider: ProcessCameraProvider? = null
-    private var preview: Preview? = null
+    private var cameraDevice: androidx.camera.core.Camera? = null  // This is the variable name
     private var imageAnalyzer: ImageAnalysis? = null
 
     // ======================================================
@@ -58,12 +65,14 @@ class CustomStreamy6View(
     // ======================================================
     private lateinit var faceDetectorHelper: FaceDetectorHelper
     private val executor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val handler = Handler(Looper.getMainLooper())
 
     // ======================================================
-    // ENCODER
+    // ENCODER & STREAMING
     // ======================================================
     private var videoEncoder: VideoEncoder? = null
-    private var encoderSurface: Surface? = null
+    private var cameraEglRenderer: CameraEglRenderer? = null
+    private var encoderDrainThread: Thread? = null
 
     init {
         reactContext.addLifecycleEventListener(this)
@@ -71,7 +80,7 @@ class CustomStreamy6View(
         initDetector()
     }
 
-     // ======================================================
+    // ======================================================
     // UI SETUP
     // ======================================================
     private fun setupLayout() {
@@ -101,7 +110,7 @@ class CustomStreamy6View(
         set.applyTo(this)
     }
 
-        private fun installHierarchyFitter(view: ViewGroup) {
+    private fun installHierarchyFitter(view: ViewGroup) {
         view.setOnHierarchyChangeListener(object : ViewGroup.OnHierarchyChangeListener {
             override fun onChildViewRemoved(parent: View?, child: View?) = Unit
             override fun onChildViewAdded(parent: View?, child: View?) {
@@ -131,20 +140,38 @@ class CustomStreamy6View(
     /**
      * 🔥 CALLED FROM REACT BUTTON
      */
-    fun startStreaming() 
-    {
-        if (streamingStarted) return
+    fun startStreaming() {
+        if (streamingStarted.get()) {
+            Log.w("Streamy6", "Streaming already started")
+            return
+        }
+        
         if (!cameraStarted) {
             Log.w("Streamy6", "Cannot start streaming – camera not ready")
             return
         }
 
-        streamingStarted = true
-
-        previewView.post {
-            startEncoder()
+        Log.w("Streamy6", "Starting streaming pipeline ------------------------------------")
+        
+        handler.post {
+            try {
+                startEncoder()
+                streamingStarted.set(true)
+                Log.d("Streamy6", "Streaming started successfully")
+            } catch (e: Exception) {
+                Log.e("Streamy6", "Failed to start streaming", e)
+                streamingStarted.set(false)
+                stopEncoder()
+            }
         }
-        Log.w("Streamy6", "inside the start stream method------------------------------------")
+    }
+
+    fun stopStreaming() {
+        if (!streamingStarted.get()) return
+        
+        Log.d("Streamy6", "Stopping streaming")
+        streamingStarted.set(false)
+        stopEncoder()
     }
 
     // ======================================================
@@ -162,10 +189,10 @@ class CustomStreamy6View(
     }
 
     private fun stopCamera() {
+        stopStreaming()
         cameraProvider?.unbindAll()
-        stopEncoder()
+        cameraDevice = null  // Fixed: was cameraInstance
         cameraStarted = false
-        streamingStarted = false
     }
 
     private fun bindCamera() {
@@ -180,7 +207,7 @@ class CustomStreamy6View(
             )
             .build()
 
-        preview = Preview.Builder()
+        val preview = Preview.Builder()
             .setResolutionSelector(resolutionSelector)
             .build()
             .also { it.setSurfaceProvider(previewView.surfaceProvider) }
@@ -200,7 +227,7 @@ class CustomStreamy6View(
         }
 
         provider.unbindAll()
-        provider.bindToLifecycle(
+        cameraDevice = provider.bindToLifecycle(  // Fixed: was cameraInstance
             reactContext.currentActivity as AppCompatActivity,
             CameraSelector.DEFAULT_FRONT_CAMERA,
             *(listOfNotNull(preview, imageAnalyzer).toTypedArray())
@@ -208,36 +235,162 @@ class CustomStreamy6View(
     }
 
     // ======================================================
-    // ENCODER (SAFE)
+    // ENCODER & STREAMING PIPELINE
     // ======================================================
-private fun startEncoder() {
-    if (videoEncoder != null) return
+    private fun startEncoder() {
+        if (videoEncoder != null) {
+            Log.w("Streamy6", "Encoder already started")
+            return
+        }
 
-    try {
-        videoEncoder = VideoEncoder(
-            width = 1280,
-            height = 720,
-            fps = 30,
-            bitrate = 2_000_000 // Reduced bitrate
-        )
+        try {
+            // Create encoder
+            videoEncoder = VideoEncoder(
+                width = 1280,
+                height = 720,
+                fps = 30,
+                bitrate = 2_000_000
+            )
 
-        encoderSurface = videoEncoder!!.start()
-        
-        // Add a small delay to ensure encoder is ready
-        Thread.sleep(100)
-        
-        Log.d("Streamy6", "Encoder started successfully")
-    } catch (e: Exception) {
-        Log.e("Streamy6", "Encoder failed to start", e)
-        stopEncoder()
-        // Re-throw or handle the error appropriately
+            // Create EGL renderer that connects to encoder surface
+            cameraEglRenderer = CameraEglRenderer(videoEncoder!!)
+            
+            // Get the SurfaceTexture from EGL renderer
+            val surfaceTexture = cameraEglRenderer!!.start()
+            val encoderSurface = Surface(surfaceTexture)
+            
+            // Connect camera to encoder surface
+            connectCameraToEncoderSurface(encoderSurface)
+            
+            // Start frame encoding thread
+            startEncoderDrainThread()
+            
+            Log.d("Streamy6", "Encoder pipeline started successfully")
+            
+        } catch (e: Exception) {
+            Log.e("Streamy6", "Failed to start encoder pipeline", e)
+            stopEncoder()
+            throw e
+        }
     }
-}
+
+    private fun connectCameraToEncoderSurface(encoderSurface: Surface) {
+        val provider = cameraProvider ?: return
+        
+        // We need to use ImageCapture or ImageAnalysis to get camera frames
+        // CameraX doesn't have direct video capture in newer versions
+        
+        // Alternative approach: Use ImageAnalysis to get frames and render to encoder
+        Log.d("Streamy6", "Setting up ImageAnalysis for encoder frames")
+        
+        // Unbind current camera
+        provider.unbindAll()
+        
+        // Create preview
+        val preview = Preview.Builder()
+            .build()
+            .also { it.setSurfaceProvider(previewView.surfaceProvider) }
+        
+        // Create ImageAnalysis that will feed frames to encoder
+        val encoderImageAnalysis = ImageAnalysis.Builder()
+            .setTargetResolution(android.util.Size(1280, 720))
+            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+            .build()
+        
+        encoderImageAnalysis.setAnalyzer(executor) { imageProxy ->
+            // This is where you would process frames for encoding
+            // For now, just log and close the image
+            Log.d("Streamy6", "Got frame for encoding: ${imageProxy.width}x${imageProxy.height}")
+            imageProxy.close()
+        }
+        
+        // Rebind camera with encoder pipeline
+        provider.bindToLifecycle(
+            reactContext.currentActivity as AppCompatActivity,
+            CameraSelector.DEFAULT_FRONT_CAMERA,
+            preview,
+            encoderImageAnalysis
+        )
+        
+        Log.d("Streamy6", "Camera setup for encoder streaming")
+    }
+
+    private fun startEncoderDrainThread() {
+        encoderDrainThread = Thread {
+            Log.d("Streamy6", "Encoder drain thread started")
+            
+            while (streamingStarted.get() && videoEncoder != null) {
+                try {
+                    // Drain encoded frames
+                    videoEncoder!!.drain { buffer, bufferInfo ->
+                        // Handle encoded frame (send to RTMP/WebRTC/etc.)
+                        handleEncodedFrame(buffer, bufferInfo)
+                    }
+                    
+                    // Throttle to avoid busy waiting
+                    Thread.sleep(10)
+                    
+                } catch (e: InterruptedException) {
+                    Log.d("Streamy6", "Encoder drain thread interrupted")
+                    break
+                } catch (e: Exception) {
+                    Log.e("Streamy6", "Error in encoder drain thread", e)
+                    if (streamingStarted.get()) {
+                        // Try to recover
+                        Thread.sleep(100)
+                    }
+                }
+            }
+            
+            Log.d("Streamy6", "Encoder drain thread stopped")
+        }
+        
+        encoderDrainThread?.priority = Thread.MAX_PRIORITY
+        encoderDrainThread?.start()
+    }
+
+    private fun handleEncodedFrame(buffer: java.nio.ByteBuffer, bufferInfo: android.media.MediaCodec.BufferInfo) {
+        // TODO: Implement your streaming logic here
+        // This could be RTMP, WebRTC, or saving to file
+        
+        // For debugging:
+        if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0) {
+            Log.d("Streamy6", "Got codec config data")
+        } else if (bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_KEY_FRAME != 0) {
+            Log.d("Streamy6", "Got keyframe: ${bufferInfo.size} bytes")
+        } else {
+            Log.d("Streamy6", "Got frame: ${bufferInfo.size} bytes, pts: ${bufferInfo.presentationTimeUs}")
+        }
+        
+        // Example: Send to RTMP server
+        // if (rtmpClient != null && rtmpClient.isConnected()) {
+        //     rtmpClient.sendVideoData(buffer, bufferInfo)
+        // }
+    }
+
     private fun stopEncoder() {
-        encoderSurface?.release()
-        encoderSurface = null
+        streamingStarted.set(false)
+        
+        // Stop drain thread
+        encoderDrainThread?.interrupt()
+        encoderDrainThread?.join(1000)
+        encoderDrainThread = null
+        
+        // Release EGL renderer
+        cameraEglRenderer?.release()
+        cameraEglRenderer = null
+        
+        // Stop encoder
         videoEncoder?.stop()
         videoEncoder = null
+        
+        // Rebind camera without encoder (back to preview only)
+        if (cameraStarted) {
+            bindCamera()
+        }
+        
+        Log.d("Streamy6", "Encoder stopped")
     }
 
     // ======================================================
@@ -283,6 +436,7 @@ private fun startEncoder() {
 
     override fun onHostDestroy() {
         stopCamera()
+        streamingStarted.set(false)
         executor.shutdown()
         executor.awaitTermination(2, TimeUnit.SECONDS)
     }

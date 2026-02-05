@@ -78,32 +78,41 @@ class VideoEncoder(
     }
 
     fun drain(onFrame: (ByteBuffer, MediaCodec.BufferInfo) -> Unit) {
-        if (!running.get() || codec == null) return
+    if (!running.get() || codec == null) {
+        Log.d(TAG, "Encoder not running or codec is null")
+        return
+    }
 
-        try {
-            while (true) {
-                val index = codec!!.dequeueOutputBuffer(bufferInfo, 0)
-                when {
-                    index == MediaCodec.INFO_TRY_AGAIN_LATER -> return
-                    index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                        val format = codec!!.outputFormat
-                        Log.d(TAG, "Output format changed: $format")
+    try {
+        while (true) {
+            val index = codec!!.dequeueOutputBuffer(bufferInfo, 10000) // 10ms timeout
+            Log.d(TAG, "dequeueOutputBuffer returned: $index")
+            
+            when {
+                index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                    Log.d(TAG, "INFO_TRY_AGAIN_LATER")
+                    return
+                }
+                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                    val format = codec!!.outputFormat
+                    Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED: $format")
+                }
+                index >= 0 -> {
+                    Log.d(TAG, "Got encoded buffer: size=${bufferInfo.size}, flags=${bufferInfo.flags}, pts=${bufferInfo.presentationTimeUs}")
+                    val buf = codec!!.getOutputBuffer(index)
+                    if (buf != null && bufferInfo.size > 0) {
+                        buf.position(bufferInfo.offset)
+                        buf.limit(bufferInfo.offset + bufferInfo.size)
+                        onFrame(buf, bufferInfo)
                     }
-                    index >= 0 -> {
-                        val buf = codec!!.getOutputBuffer(index)
-                        if (buf != null && bufferInfo.size > 0) {
-                            buf.position(bufferInfo.offset)
-                            buf.limit(bufferInfo.offset + bufferInfo.size)
-                            onFrame(buf, bufferInfo)
-                        }
-                        codec!!.releaseOutputBuffer(index, false)
-                    }
+                    codec!!.releaseOutputBuffer(index, false)
                 }
             }
-        } catch (e: IllegalStateException) {
-            Log.e(TAG, "Codec is in wrong state", e)
         }
+    } catch (e: IllegalStateException) {
+        Log.e(TAG, "Codec is in wrong state", e)
     }
+}
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
