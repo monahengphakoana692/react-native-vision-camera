@@ -57,7 +57,7 @@ class CustomStreamy6View(
     // CAMERA
     // ======================================================
     private var cameraProvider: ProcessCameraProvider? = null
-    private var cameraDevice: androidx.camera.core.Camera? = null  // This is the variable name
+    private var cameraDevice: androidx.camera.core.Camera? = null
     private var imageAnalyzer: ImageAnalysis? = null
 
     // ======================================================
@@ -191,7 +191,7 @@ class CustomStreamy6View(
     private fun stopCamera() {
         stopStreaming()
         cameraProvider?.unbindAll()
-        cameraDevice = null  // Fixed: was cameraInstance
+        cameraDevice = null
         cameraStarted = false
     }
 
@@ -227,7 +227,7 @@ class CustomStreamy6View(
         }
 
         provider.unbindAll()
-        cameraDevice = provider.bindToLifecycle(  // Fixed: was cameraInstance
+        cameraDevice = provider.bindToLifecycle(
             reactContext.currentActivity as AppCompatActivity,
             CameraSelector.DEFAULT_FRONT_CAMERA,
             *(listOfNotNull(preview, imageAnalyzer).toTypedArray())
@@ -246,26 +246,23 @@ class CustomStreamy6View(
         try {
             // Create encoder
             videoEncoder = VideoEncoder(
-                width = 1280,
-                height = 720,
+                width = 640,
+                height = 480,
                 fps = 30,
-                bitrate = 2_000_000
+                bitrate = 1_000_000
             )
 
-            // Create EGL renderer that connects to encoder surface
+            // Create EGL renderer
             cameraEglRenderer = CameraEglRenderer(videoEncoder!!)
-            
-            // Get the SurfaceTexture from EGL renderer
             val surfaceTexture = cameraEglRenderer!!.start()
-            val encoderSurface = Surface(surfaceTexture)
             
-            // Connect camera to encoder surface
-            connectCameraToEncoderSurface(encoderSurface)
+            // Connect camera to EGL SurfaceTexture
+            connectCameraToEgl(surfaceTexture)
             
-            // Start frame encoding thread
+            // Start encoder drain thread
             startEncoderDrainThread()
             
-            Log.d("Streamy6", "Encoder pipeline started successfully")
+            Log.d("Streamy6", "Encoder pipeline started with EGL renderer")
             
         } catch (e: Exception) {
             Log.e("Streamy6", "Failed to start encoder pipeline", e)
@@ -274,46 +271,33 @@ class CustomStreamy6View(
         }
     }
 
-    private fun connectCameraToEncoderSurface(encoderSurface: Surface) {
+    private fun connectCameraToEgl(surfaceTexture: android.graphics.SurfaceTexture) {
         val provider = cameraProvider ?: return
         
-        // We need to use ImageCapture or ImageAnalysis to get camera frames
-        // CameraX doesn't have direct video capture in newer versions
+        Log.d("Streamy6", "Connecting camera to EGL SurfaceTexture")
         
-        // Alternative approach: Use ImageAnalysis to get frames and render to encoder
-        Log.d("Streamy6", "Setting up ImageAnalysis for encoder frames")
-        
-        // Unbind current camera
         provider.unbindAll()
         
-        // Create preview
+        // Create Surface from EGL SurfaceTexture
+        val surface = Surface(surfaceTexture)
+        
         val preview = Preview.Builder()
             .build()
-            .also { it.setSurfaceProvider(previewView.surfaceProvider) }
+            .also { 
+                it.setSurfaceProvider { request ->
+                    request.provideSurface(surface, executor) { result ->
+                        Log.d("Streamy6", "CameraX surface result: $result")
+                    }
+                }
+            }
         
-        // Create ImageAnalysis that will feed frames to encoder
-        val encoderImageAnalysis = ImageAnalysis.Builder()
-            .setTargetResolution(android.util.Size(1280, 720))
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
-            .build()
-        
-        encoderImageAnalysis.setAnalyzer(executor) { imageProxy ->
-            // This is where you would process frames for encoding
-            // For now, just log and close the image
-            Log.d("Streamy6", "Got frame for encoding: ${imageProxy.width}x${imageProxy.height}")
-            imageProxy.close()
-        }
-        
-        // Rebind camera with encoder pipeline
         provider.bindToLifecycle(
             reactContext.currentActivity as AppCompatActivity,
             CameraSelector.DEFAULT_FRONT_CAMERA,
-            preview,
-            encoderImageAnalysis
+            preview
         )
         
-        Log.d("Streamy6", "Camera setup for encoder streaming")
+        Log.d("Streamy6", "Camera connected to EGL pipeline")
     }
 
     private fun startEncoderDrainThread() {
@@ -385,7 +369,7 @@ class CustomStreamy6View(
         videoEncoder?.stop()
         videoEncoder = null
         
-        // Rebind camera without encoder (back to preview only)
+        // Rebind camera for preview
         if (cameraStarted) {
             bindCamera()
         }

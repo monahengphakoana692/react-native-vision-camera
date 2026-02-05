@@ -9,52 +9,52 @@ import java.util.concurrent.atomic.AtomicBoolean
 class VideoEncoder(
     private val width: Int,
     private val height: Int,
-    private val bitrate: Int = 2_000_000, // Reduced from 4M to 2M
+    private val bitrate: Int = 2_000_000,
     private val fps: Int = 30,
     private val iFrameInterval: Int = 2
 ) {
 
     companion object {
         private const val TAG = "VideoEncoder"
-        private const val MIME_TYPE = MediaFormat.MIMETYPE_VIDEO_AVC
     }
 
     private var codec: MediaCodec? = null
-    private var inputSurface: Surface? = null
-    private val bufferInfo = MediaCodec.BufferInfo()
     private val running = AtomicBoolean(false)
+    private val bufferInfo = MediaCodec.BufferInfo()
 
     fun start(): Surface {
         try {
-            // First, let's find a supported codec
-            val codecName = findAvcEncoder() ?: throw IllegalStateException("No AVC encoder found")
+            Log.d(TAG, "Starting encoder: ${width}x${height}, ${bitrate}bps, ${fps}fps")
             
-            val format = MediaFormat.createVideoFormat(MIME_TYPE, width, height).apply {
-                setInteger(MediaFormat.KEY_COLOR_FORMAT,
-                    MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+            // Create format with proper settings
+            val format = MediaFormat.createVideoFormat(MediaFormat.MIMETYPE_VIDEO_AVC, width, height).apply {
                 setInteger(MediaFormat.KEY_BIT_RATE, bitrate)
                 setInteger(MediaFormat.KEY_FRAME_RATE, fps)
                 setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, iFrameInterval)
+                setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
                 
-                // Don't set profile/level - let the codec choose based on capabilities
-                // Or use these safer values:
-                setInteger(MediaFormat.KEY_PROFILE, 
-                    MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
-                setInteger(MediaFormat.KEY_LEVEL, 
-                    MediaCodecInfo.CodecProfileLevel.AVCLevel31) // For 720p@30fps
+                // Add profile/level for better compatibility
+                setInteger(MediaFormat.KEY_PROFILE, MediaCodecInfo.CodecProfileLevel.AVCProfileBaseline)
+                setInteger(MediaFormat.KEY_LEVEL, MediaCodecInfo.CodecProfileLevel.AVCLevel31)
+                
+                // Optional: Set bitrate mode
+                // setInteger(MediaFormat.KEY_BITRATE_MODE, MediaCodecInfo.EncoderCapabilities.BITRATE_MODE_CBR)
             }
-
-            Log.d(TAG, "Creating encoder: $codecName with format: $format")
             
-            codec = MediaCodec.createByCodecName(codecName)
+            Log.d(TAG, "Encoder format: $format")
+            
+            // Create encoder
+            codec = MediaCodec.createEncoderByType(MediaFormat.MIMETYPE_VIDEO_AVC)
             codec!!.configure(format, null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-
-            inputSurface = codec!!.createInputSurface()
+            
+            val surface = codec!!.createInputSurface()
             codec!!.start()
+            
             running.set(true)
-
-            Log.d(TAG, "Encoder started successfully $width x $height")
-            return inputSurface!!
+            
+            Log.d(TAG, "Encoder started successfully")
+            return surface
+            
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start encoder", e)
             stop()
@@ -62,69 +62,71 @@ class VideoEncoder(
         }
     }
 
-    private fun findAvcEncoder(): String? {
-        val mediaCodecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
-        for (info in mediaCodecList.codecInfos) {
-            if (info.isEncoder) {
-                for (mimeType in info.supportedTypes) {
-                    if (mimeType.equals(MIME_TYPE, ignoreCase = true)) {
-                        Log.d(TAG, "Found encoder: ${info.name}")
-                        return info.name
-                    }
-                }
-            }
-        }
-        return null
-    }
-
     fun drain(onFrame: (ByteBuffer, MediaCodec.BufferInfo) -> Unit) {
-    if (!running.get() || codec == null) {
-        Log.d(TAG, "Encoder not running or codec is null")
-        return
-    }
+        if (!running.get() || codec == null) {
+            Log.v(TAG, "Encoder not running")
+            return
+        }
 
-    try {
-        while (true) {
-            val index = codec!!.dequeueOutputBuffer(bufferInfo, 10000) // 10ms timeout
-            Log.d(TAG, "dequeueOutputBuffer returned: $index")
-            
-            when {
-                index == MediaCodec.INFO_TRY_AGAIN_LATER -> {
-                    Log.d(TAG, "INFO_TRY_AGAIN_LATER")
-                    return
-                }
-                index == MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
-                    val format = codec!!.outputFormat
-                    Log.d(TAG, "INFO_OUTPUT_FORMAT_CHANGED: $format")
-                }
-                index >= 0 -> {
-                    Log.d(TAG, "Got encoded buffer: size=${bufferInfo.size}, flags=${bufferInfo.flags}, pts=${bufferInfo.presentationTimeUs}")
-                    val buf = codec!!.getOutputBuffer(index)
-                    if (buf != null && bufferInfo.size > 0) {
-                        buf.position(bufferInfo.offset)
-                        buf.limit(bufferInfo.offset + bufferInfo.size)
-                        onFrame(buf, bufferInfo)
+        try {
+            var hasMore = true
+            while (hasMore) {
+                val index = codec!!.dequeueOutputBuffer(bufferInfo, 10000)
+                
+                when (index) {
+                    MediaCodec.INFO_TRY_AGAIN_LATER -> {
+                        hasMore = false
+                        Log.v(TAG, "No frames available")
                     }
-                    codec!!.releaseOutputBuffer(index, false)
+                    
+                    MediaCodec.INFO_OUTPUT_FORMAT_CHANGED -> {
+                        val format = codec!!.outputFormat
+                        Log.d(TAG, "Output format changed: $format")
+                    }
+                    
+                    else -> {
+                        if (index >= 0) {
+                            val buf = codec!!.getOutputBuffer(index)
+                            if (buf != null && bufferInfo.size > 0) {
+                                buf.position(bufferInfo.offset)
+                                buf.limit(bufferInfo.offset + bufferInfo.size)
+                                
+                                // Detailed logging
+                                val flags = bufferInfo.flags
+                                val type = when {
+                                    flags and MediaCodec.BUFFER_FLAG_CODEC_CONFIG != 0 -> "CONFIG"
+                                    flags and MediaCodec.BUFFER_FLAG_KEY_FRAME != 0 -> "KEYFRAME"
+                                    else -> "FRAME"
+                                }
+                                
+                                Log.d(TAG, "Got $type: ${bufferInfo.size} bytes, pts: ${bufferInfo.presentationTimeUs}")
+                                
+                                onFrame(buf, bufferInfo)
+                            }
+                            codec!!.releaseOutputBuffer(index, false)
+                        }
+                    }
                 }
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error draining encoder", e)
         }
-    } catch (e: IllegalStateException) {
-        Log.e(TAG, "Codec is in wrong state", e)
     }
-}
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
+        
+        Log.d(TAG, "Stopping encoder")
+        
         try {
             codec?.stop()
             codec?.release()
-            inputSurface?.release()
         } catch (e: Exception) {
             Log.e(TAG, "Error stopping encoder", e)
         } finally {
             codec = null
-            inputSurface = null
         }
     }
+    
+    fun isRunning(): Boolean = running.get()
 }
