@@ -46,22 +46,44 @@ export default function StreamScreen() {
     <View style={styles.container}>
       <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
 
+      {/* Always show camera preview when permission granted */}
       {hasPermission && (
-        <Streamy6View
-          style={StyleSheet.absoluteFill}
-          enabled={true}
-          showDetection={true}
-          startStreaming={startStream}
-        />
+        <>
+          <Streamy6View
+            style={StyleSheet.absoluteFill}
+            enabled={true}
+            showDetection={!startStream} // Only show detection when not streaming (optional)
+            startStreaming={startStream}
+          />
+          
+          {/* Recording indicator overlay */}
+          {startStream && (
+            <View style={styles.recordingIndicator}>
+              <View style={styles.recordingDot} />
+              <Text style={styles.recordingText}>REC</Text>
+              <Text style={styles.recordingTime}>00:00</Text>
+            </View>
+          )}
+        </>
       )}
 
+      {/* Control buttons */}
       <View style={styles.controls}>
-        <Pressable
-          style={styles.button}
-          onPress={() => setStartStream(true)}
-        >
-          <Text style={styles.buttonText}>START STREAM</Text>
-        </Pressable>
+        {!startStream ? (
+          <Pressable
+            style={styles.button}
+            onPress={() => setStartStream(true)}
+          >
+            <Text style={styles.buttonText}>START STREAM</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={[styles.button, styles.stopButton]}
+            onPress={() => setStartStream(false)}
+          >
+            <Text style={styles.buttonText}>STOP STREAM</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
@@ -91,10 +113,50 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 14,
     borderRadius: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  stopButton: {
+    backgroundColor: '#dc2626',
   },
   buttonText: {
     color: 'white',
     fontWeight: 'bold',
     letterSpacing: 1,
+    fontSize: 16,
+  },
+  recordingIndicator: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#dc2626',
+  },
+  recordingDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#dc2626',
+    marginRight: 8,
+  },
+  recordingText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginRight: 8,
+  },
+  recordingTime: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });
