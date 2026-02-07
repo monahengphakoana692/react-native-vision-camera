@@ -15,15 +15,33 @@ class ReactStreamy6Manager : SimpleViewManager<CustomStreamy6View>() {
         return CustomStreamy6View(reactContext)
     }
 
+    // ======================================================
+    // CAMERA ENABLE / DISABLE
+    // ======================================================
     @ReactProp(name = "enabled", defaultBoolean = false)
     fun setEnabled(view: CustomStreamy6View, enabled: Boolean) {
         Log.d("Streamy6Manager", "Camera enabled = $enabled")
-        view.setStreamEnabled(enabled)  // Use the renamed method
+        view.setStreamEnabled(enabled)
     }
 
-   @ReactProp(name = "showDetection", defaultBoolean = true)
-    fun setShowDetection(view: CustomStreamy6View, showDetection: Boolean) {  // Fixed parameter name
+    // ======================================================
+    // FACE DETECTION OVERLAY
+    // ======================================================
+    @ReactProp(name = "showDetection", defaultBoolean = true)
+    fun setShowDetection(view: CustomStreamy6View, showDetection: Boolean) {
         Log.d("Streamy6Manager", "Show detection = $showDetection")
-        view.setShowDetection(showDetection)  // Use the local parameter
+        view.setShowDetection(showDetection)
+    }
+
+    // ======================================================
+    // START STREAMING (ENCODER)
+    // Triggered by button from TSX
+    // ======================================================
+    @ReactProp(name = "startStreaming", defaultBoolean = false)
+    fun setStartStreaming(view: CustomStreamy6View, startStreaming: Boolean) {
+        if (startStreaming) {
+            Log.d("Streamy6Manager", "Start streaming requested")
+            view.startStreaming()
+        }
     }
 }
