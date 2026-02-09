@@ -13,6 +13,7 @@ import { createTablesAndTriggers } from './Database/schema';
 
 const Stack = createStackNavigator();
 
+
 const App = () => {
   const [ready, setReady] = useState(false);
 
