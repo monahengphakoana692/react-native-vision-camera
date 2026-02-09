@@ -183,6 +183,8 @@ class CustomStreamy6View(
         val providerFuture = ProcessCameraProvider.getInstance(context)
         providerFuture.addListener({
             cameraProvider = providerFuture.get()
+            overlayView.clear()
+            
             bindCamera()
             cameraStarted = true
         }, ContextCompat.getMainExecutor(context))

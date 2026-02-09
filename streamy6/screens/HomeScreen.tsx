@@ -50,7 +50,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       icon: 'analytics',
       color: '#AF52DE',
       gradient: ['#AF52DE', '#FF2D55'],
-      onPress: () => console.log('Analytics pressed'),
+      onPress: () => navigation.navigate('AnalyticScreen'),
     },
   ];
 
