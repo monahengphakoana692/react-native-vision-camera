@@ -87,6 +87,7 @@ const AnalyticScreen = () => {
           </Text>
         ))}
 
+
       </ScrollView>
     </SafeAreaView>
   );

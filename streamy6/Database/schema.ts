@@ -13,6 +13,7 @@ export const createTablesAndTriggers = async () => {
       created_at INTEGER NOT NULL
     );
   `);
+  
 
   await db.executeSql(`
     CREATE TABLE IF NOT EXISTS stream_stats (

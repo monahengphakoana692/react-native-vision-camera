@@ -18,6 +18,7 @@ export const insertStream = async (
   );
 };
 
+
 export const getAllStreams = async () => {
   const db = await openDatabase();
   const [res] = await db.executeSql(`

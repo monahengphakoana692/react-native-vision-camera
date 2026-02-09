@@ -13,4 +13,5 @@ export const openDatabase = async () => {
   });
 
   return dbInstance;
+  
 };
