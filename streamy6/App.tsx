@@ -10,6 +10,7 @@ import AnalyticScreen from './screens/AnalyticScreen';
 import { openDatabase } from './Database';
 import { createTablesAndTriggers } from './Database/schema';
 
+
 const Stack = createStackNavigator();
 
 const App = () => {
@@ -40,7 +41,9 @@ const App = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="StreamScreen" component={StreamScreen} />
+
         <Stack.Screen name="AnalyticScreen" component={AnalyticScreen} />
+
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -54,12 +54,14 @@ const AnalyticScreen = () => {
     return (
       <SafeAreaView style={styles.centered}>
         <ActivityIndicator size="large" color="#22C55E" />
+
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
+
       <ScrollView>
         <Text style={styles.title}>Stream Analytics</Text>
 
@@ -84,6 +86,7 @@ const AnalyticScreen = () => {
             {s.duration} | Avg: {s.average_viewers}
           </Text>
         ))}
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -92,6 +95,7 @@ const AnalyticScreen = () => {
 export default AnalyticScreen;
 
 const styles = StyleSheet.create({
+
   container: { flex: 1, padding: 16, backgroundColor: '#0E0E13' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 26, color: '#FFF', marginBottom: 16 },
@@ -99,3 +103,4 @@ const styles = StyleSheet.create({
   stat: { color: '#22C55E', marginBottom: 4 },
   row: { color: '#DDD', marginVertical: 2 },
 });
+

@@ -1,5 +1,6 @@
 // src/screens/HomeScreen.tsx
 import React from 'react';
+
 import {
   View,
   Text,
@@ -18,6 +19,7 @@ type HomeScreenProps = {
 };
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
+
   const menuItems = [
     {
       id: 1,
@@ -50,6 +52,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       icon: 'analytics',
       color: '#AF52DE',
       gradient: ['#AF52DE', '#FF2D55'],
+
       onPress: () => navigation.navigate('AnalyticScreen'),
     },
   ];
