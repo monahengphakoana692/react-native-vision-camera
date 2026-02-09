@@ -36,7 +36,7 @@ const HomeScreen: React.FC<HomeScreenProps> = ({ navigation }) => {
       icon: 'link',
       color: '#007AFF',
       gradient: ['#007AFF', '#5856D6'],
-      onPress: () => console.log('Linked Apps pressed'),
+      onPress: () => navigation.navigate('LinkedAppsScreen'),
     },
     {
       id: 3,

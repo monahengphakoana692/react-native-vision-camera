@@ -1,6 +1,9 @@
+console.log('LinkedAppsScreen mounted');
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
+
+console.log('LinkedAppsScreen mounted');
 
 const LinkedAppsScreen = () => {
   return (

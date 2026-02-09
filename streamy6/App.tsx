@@ -6,6 +6,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from './screens/HomeScreen';
 import StreamScreen from './screens/StreamScreen';
 import AnalyticScreen from './screens/AnalyticScreen';
+import LinkedAppsScreen from './screens/LinkedAppsScreen';
 
 import { openDatabase } from './Database';
 import { createTablesAndTriggers } from './Database/schema';
@@ -42,7 +43,7 @@ const App = () => {
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="StreamScreen" component={StreamScreen} />
-
+        <Stack.Screen name="LinkedAppsScreen" component={LinkedAppsScreen} />
         <Stack.Screen name="AnalyticScreen" component={AnalyticScreen} />
 
       </Stack.Navigator>
