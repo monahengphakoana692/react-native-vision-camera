@@ -1,3 +1,9 @@
 <resources>
     <string name="app_name">streamy6</string>
+
+    <!-- Facebook -->
+    <string name="facebook_app_id">1558443772072727</string>
+    <string name="facebook_client_token">89bce1e4619bfaadfbda3d14174d12ff</string>
+    <string name="facebook_login_protocol_scheme">fb1558443772072727</string>
+
 </resources>
